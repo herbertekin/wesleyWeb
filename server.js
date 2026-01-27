@@ -9,7 +9,7 @@ const fs = require('fs');
 const app = express();
 
 // --- 1. DIRECTORY SETUP ---
-// Using absolute paths ensures Railway finds the folder regardless of where the script runs
+// Using absolute paths ensures Railway finds the folder reliably
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
@@ -39,7 +39,7 @@ const db = mysql.createPool({
 db.getConnection((err, connection) => {
     if (err) {
         console.error("❌ Database connection failed!");
-        console.error("Reason:", err.message);
+        console.error("Reason:", err.message || "No error message provided. Check your Variables.");
     } else {
         console.log("✅ Successfully connected to Railway Database!");
         connection.release(); 
@@ -52,7 +52,6 @@ const storage = multer.diskStorage({
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-        // Safe filename with timestamp to avoid overwrites
         cb(null, 'prod_' + Date.now() + path.extname(file.originalname));
     }
 });
@@ -79,7 +78,6 @@ app.post('/api/products', upload.single('image'), (req, res) => {
         return res.status(400).json({ error: "Image file is required" });
     }
     
-    // Path stored in DB for the frontend to use
     const imageUrl = `/uploads/${req.file.filename}`;
     const sql = 'INSERT INTO products (name, category, p_condition, price, description, image_url) VALUES (?,?,?,?,?,?)';
     
@@ -104,13 +102,14 @@ app.delete('/api/products/:id', (req, res) => {
     });
 });
 
-// Serve frontend
-app.get('*', (req, res) => {
+// --- 6. FRONTEND SERVING (PATH-ERROR FIX) ---
+// Using a Regular Expression /^.*$/ matches everything safely 
+// in all versions of Express and Node.js (v20+)
+app.get(/^.*$/, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// --- 6. START SERVER ---
-// Using 0.0.0.0 is critical for Railway to route external traffic to your app
+// --- 7. START SERVER ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
