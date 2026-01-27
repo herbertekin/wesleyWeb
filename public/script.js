@@ -2,25 +2,30 @@ let allProducts = [];
 let categoryFilter = 'all';
 
 // --- SMART API CONFIG ---
-// We use window.location.origin to automatically detect if we are on localhost or Railway
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+// Use a relative path when live to avoid any domain mismatch issues
 const API_BASE = isLocal 
     ? 'http://localhost:3000/api/products' 
-    : 'https://wesleyweb-production.up.railway.app/api/products';
+    : '/api/products';
+
+const IMAGE_ROOT = isLocal 
+    ? 'http://localhost:3000' 
+    : window.location.origin;
 
 // --- DATA SYNC ---
 async function fetchProducts() {
     try {
         const response = await fetch(API_BASE);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        
         const data = await response.json();
 
-        if (Array.isArray(data)) {
+        if (response.ok && Array.isArray(data)) {
             allProducts = data;
             render();
         } else {
-            console.error("❌ Server sent an error instead of data:", data);
+            console.error("❌ Server Error:", data);
+            // This shows you the ACTUAL error from your MySQL/Server
+            alert("Database Error: " + (data.details || data.error || "Check Railway Logs"));
             allProducts = [];
             render();
         }
@@ -59,7 +64,6 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
     const btn = document.getElementById('submit-btn');
     const fileInput = document.getElementById('p-image');
     
-    // Validate image before sending
     if (!fileInput.files[0]) {
         alert("Please select an image first.");
         return;
@@ -77,23 +81,19 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
     btn.innerText = "Processing...";
 
     try {
-        const res = await fetch(API_BASE, { 
-            method: 'POST', 
-            body: formData 
-            // Note: Do NOT set Content-Type header manually when sending FormData
-        });
+        const res = await fetch(API_BASE, { method: 'POST', body: formData });
+        const result = await res.json();
 
         if (res.ok) {
             alert("Item successfully listed!");
             e.target.reset();
-            await fetchProducts(); // Refresh the list
+            fetchProducts();
+            showSection('shop'); // Go back to shop to see the result
         } else {
-            const errorData = await res.json().catch(() => ({}));
-            alert("Upload failed: " + (errorData.error || "Server Error (500)"));
+            alert("Upload failed: " + (result.error || result.details || "Unknown error"));
         }
     } catch (err) { 
-        console.error("Upload error:", err);
-        alert("Network error during upload. Check your internet or server status."); 
+        alert("Network error during upload. Check server logs."); 
     } finally {
         btn.disabled = false; 
         btn.innerText = "Post to Showroom";
@@ -136,32 +136,36 @@ function render() {
     filtered.forEach(p => {
         const msg = encodeURIComponent(`Hi Wesley, I'm interested in ${p.name}`);
         
-        // Ensure the image URL is absolute so it works on both Local and Railway
-        const imageBase = isLocal ? 'http://localhost:3000' : 'https://wesleyweb-production.up.railway.app';
-        const fullImageUrl = p.image_url.startsWith('http') ? p.image_url : `${imageBase}${p.image_url}`;
+        // Construct Image URL
+        const fullImageUrl = p.image_url.startsWith('http') 
+            ? p.image_url 
+            : `${IMAGE_ROOT}${p.image_url}`;
         
+        // Safe Price Formatting
+        const displayPrice = isNaN(p.price) ? p.price : Number(p.price).toLocaleString();
+
         grid.innerHTML += `
             <div class="card">
-                <div class="badge">${p.p_condition}</div>
+                <div class="badge">${p.p_condition || 'New'}</div>
                 <img src="${fullImageUrl}" loading="lazy" onerror="this.src='https://via.placeholder.com/150'">
                 <div class="card-body">
                     <small style="color:#eab308; font-weight:bold">${p.category}</small>
                     <h3>${p.name}</h3>
-                    <div class="card-price">Ksh ${Number(p.price).toLocaleString()}</div>
+                    <div class="card-price">Ksh ${displayPrice}</div>
                     <a href="https://wa.me/254740475314?text=${msg}" target="_blank" class="wa-link">Buy on WhatsApp</a>
                 </div>
             </div>`;
 
         adminGrid.innerHTML += `
             <div class="admin-item" style="display:flex; align-items:center; border-bottom:1px solid #ddd; padding:10px;">
-                <img src="${fullImageUrl}" width="50" height="50" style="object-fit:cover;">
+                <img src="${fullImageUrl}" width="50" height="50" style="object-fit:cover; border-radius:4px;">
                 <div style="flex:1; margin-left:10px;"><b>${p.name}</b></div>
-                <button onclick="deleteItem(${p.id})" style="background:#ef4444; color:white; border:none; padding:5px 10px; cursor:pointer;">Delete</button>
+                <button onclick="deleteItem(${p.id})" style="background:#ef4444; color:white; border:none; padding:5px 10px; cursor:pointer; border-radius:4px;">Delete</button>
             </div>`;
     });
 }
 
-// Filters
+// --- FILTERS ---
 const searchBar = document.getElementById('search-input');
 if (searchBar) searchBar.addEventListener('input', render);
 
