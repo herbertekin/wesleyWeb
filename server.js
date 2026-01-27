@@ -8,94 +8,110 @@ const fs = require('fs');
 
 const app = express();
 
-// Ensure 'uploads' directory exists
-if (!fs.existsSync('./uploads')) {
-    fs.mkdirSync('./uploads');
+// --- 1. DIRECTORY SETUP ---
+// Using absolute paths ensures Railway finds the folder regardless of where the script runs
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Middleware
+// --- 2. MIDDLEWARE ---
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public')); 
-app.use('/uploads', express.static('uploads')); 
+app.use(express.static(path.join(__dirname, 'public'))); 
+app.use('/uploads', express.static(uploadDir)); 
 
-// 1. Live MySQL Connection Pool with Keep-Alive to prevent ECONNRESET
+// --- 3. DATABASE CONNECTION ---
 const db = mysql.createPool({
     host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
+    port: parseInt(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-    enableKeepAlive: true,        // Keeps the connection from timing out
-    keepAliveInitialDelay: 10000  // Pings the DB every 10 seconds
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10000 
 });
 
-// Check connection status on startup
+// Verification Log
 db.getConnection((err, connection) => {
     if (err) {
-        console.error("❌ Database connection failed: " + err.message);
+        console.error("❌ Database connection failed!");
+        console.error("Reason:", err.message);
     } else {
-        console.log("✅ Successfully connected to Live Railway Database via Pool!");
+        console.log("✅ Successfully connected to Railway Database!");
         connection.release(); 
     }
 });
 
-// 2. Image Upload Logic
+// --- 4. IMAGE UPLOAD CONFIG ---
 const storage = multer.diskStorage({
-    destination: './uploads/',
+    destination: (req, file, cb) => {
+        cb(null, uploadDir);
+    },
     filename: (req, file, cb) => {
+        // Safe filename with timestamp to avoid overwrites
         cb(null, 'prod_' + Date.now() + path.extname(file.originalname));
     }
 });
 const upload = multer({ storage });
 
-// 3. API: Get All Products
+// --- 5. API ROUTES ---
+
+// GET All Products
 app.get('/api/products', (req, res) => {
     db.query('SELECT * FROM products ORDER BY id DESC', (err, results) => {
         if (err) {
-            console.error("❌ Database Query Error:", err.message);
-            return res.status(500).json({ error: "Database error: " + err.message });
+            console.error("❌ SELECT Error:", err.message);
+            return res.status(500).json({ error: "Database error", details: err.message });
         }
         res.json(results);
     });
 });
 
-// 4. API: Add Product
+// POST New Product
 app.post('/api/products', upload.single('image'), (req, res) => {
     const { name, category, condition, price, desc } = req.body;
-    if (!req.file) return res.status(400).json({ message: "Image is required" });
     
+    if (!req.file) {
+        return res.status(400).json({ error: "Image file is required" });
+    }
+    
+    // Path stored in DB for the frontend to use
     const imageUrl = `/uploads/${req.file.filename}`;
     const sql = 'INSERT INTO products (name, category, p_condition, price, description, image_url) VALUES (?,?,?,?,?,?)';
     
     db.query(sql, [name, category, condition, price, desc, imageUrl], (err, result) => {
         if (err) {
-            console.error("❌ Insert Error:", err.message);
-            return res.status(500).json({ error: err.message });
+            console.error("❌ INSERT Error:", err.message);
+            return res.status(500).json({ error: "Failed to save to database" });
         }
         res.json({ message: "Success", id: result.insertId });
     });
 });
 
-// 5. API: Delete Product
+// DELETE Product
 app.delete('/api/products/:id', (req, res) => {
-    db.query('DELETE FROM products WHERE id = ?', [req.params.id], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
+    const { id } = req.params;
+    db.query('DELETE FROM products WHERE id = ?', [id], (err) => {
+        if (err) {
+            console.error("❌ DELETE Error:", err.message);
+            return res.status(500).json({ error: "Failed to delete item" });
+        }
         res.json({ message: "Deleted" });
     });
 });
 
 // Serve frontend
-app.get('/', (req, res) => {
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start Server
+// --- 6. START SERVER ---
+// Using 0.0.0.0 is critical for Railway to route external traffic to your app
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Server running at http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running on port ${PORT}`);
 });
-module.exports = app;
