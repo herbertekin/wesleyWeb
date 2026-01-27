@@ -2,7 +2,6 @@ let allProducts = [];
 let categoryFilter = 'all';
 
 // --- SMART API CONFIG ---
-// This checks if you are on your computer or the live site
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api/products'
     : 'https://wesleyweb-production.up.railway.app/api/products';
@@ -19,15 +18,14 @@ async function fetchProducts() {
 
         if (Array.isArray(data)) {
             allProducts = data;
-            render();
         } else {
             console.error("❌ Server sent an error instead of data:", data);
-            allProducts = []; 
-            render();
+            allProducts = [];
         }
+        render();
     } catch (err) {
         console.error("❌ Network error connecting to API:", err);
-        allProducts = []; 
+        allProducts = [];
         render();
     }
 }
@@ -123,7 +121,6 @@ function render() {
 
     filtered.forEach(p => {
         const msg = encodeURIComponent(`Hi Wesley, I'm interested in ${p.name}`);
-        // Ensure image URL is absolute
         const fullImageUrl = p.image_url.startsWith('http') ? p.image_url : `${IMAGE_ROOT}${p.image_url}`;
         
         grid.innerHTML += `
