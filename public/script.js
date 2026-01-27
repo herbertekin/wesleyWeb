@@ -1,6 +1,15 @@
 let allProducts = [];
 let categoryFilter = 'all';
-const API_BASE = 'http://localhost:3000/api/products'; 
+
+// --- SMART API CONFIG ---
+// This checks if you are on your computer or the live site
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000/api/products'
+    : 'https://wesleyweb-production.up.railway.app/api/products';
+
+const IMAGE_ROOT = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000'
+    : 'https://wesleyweb-production.up.railway.app';
 
 // --- DATA SYNC ---
 async function fetchProducts() {
@@ -8,17 +17,16 @@ async function fetchProducts() {
         const response = await fetch(API_BASE);
         const data = await response.json();
 
-        // Check if data is actually an array before trying to filter/render
         if (Array.isArray(data)) {
             allProducts = data;
             render();
         } else {
             console.error("❌ Server sent an error instead of data:", data);
-            allProducts = []; // Prevent filter() crash
+            allProducts = []; 
             render();
         }
     } catch (err) {
-        console.error("❌ Network error:", err);
+        console.error("❌ Network error connecting to API:", err);
         allProducts = []; 
         render();
     }
@@ -70,7 +78,8 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
             e.target.reset();
             fetchProducts();
         } else {
-            alert("Upload failed. Check server logs.");
+            const errorData = await res.json();
+            alert("Upload failed: " + (errorData.error || "Unknown error"));
         }
     } catch (err) { 
         alert("Network error during upload."); 
@@ -97,12 +106,11 @@ function render() {
     const searchInput = document.getElementById('search-input');
     const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
     
-    if (!grid || !adminGrid) return; // Safety check
+    if (!grid || !adminGrid) return; 
 
     grid.innerHTML = ''; 
     adminGrid.innerHTML = '';
 
-    // Safety: only filter if allProducts is an array
     const filtered = (allProducts || []).filter(p => {
         const matchCat = categoryFilter === 'all' || p.category === categoryFilter;
         const matchSearch = p.name.toLowerCase().includes(searchTerm);
@@ -115,11 +123,13 @@ function render() {
 
     filtered.forEach(p => {
         const msg = encodeURIComponent(`Hi Wesley, I'm interested in ${p.name}`);
+        // Ensure image URL is absolute
+        const fullImageUrl = p.image_url.startsWith('http') ? p.image_url : `${IMAGE_ROOT}${p.image_url}`;
         
         grid.innerHTML += `
             <div class="card">
                 <div class="badge">${p.p_condition}</div>
-                <img src="${p.image_url}" loading="lazy" onerror="this.src='https://via.placeholder.com/150'">
+                <img src="${fullImageUrl}" loading="lazy" onerror="this.src='https://via.placeholder.com/150'">
                 <div class="card-body">
                     <small style="color:#eab308; font-weight:bold">${p.category}</small>
                     <h3>${p.name}</h3>
@@ -130,7 +140,7 @@ function render() {
 
         adminGrid.innerHTML += `
             <div class="admin-item" style="display:flex; align-items:center; border-bottom:1px solid #ddd; padding:10px;">
-                <img src="${p.image_url}" width="50" height="50" style="object-fit:cover;">
+                <img src="${fullImageUrl}" width="50" height="50" style="object-fit:cover;">
                 <div style="flex:1; margin-left:10px;"><b>${p.name}</b></div>
                 <button onclick="deleteItem(${p.id})" style="background:#ef4444; color:white; border:none; padding:5px 10px; cursor:pointer;">Delete</button>
             </div>`;
