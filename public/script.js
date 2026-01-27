@@ -2,27 +2,28 @@ let allProducts = [];
 let categoryFilter = 'all';
 
 // --- SMART API CONFIG ---
-const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:3000/api/products'
+// We use window.location.origin to automatically detect if we are on localhost or Railway
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API_BASE = isLocal 
+    ? 'http://localhost:3000/api/products' 
     : 'https://wesleyweb-production.up.railway.app/api/products';
-
-const IMAGE_ROOT = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:3000'
-    : 'https://wesleyweb-production.up.railway.app';
 
 // --- DATA SYNC ---
 async function fetchProducts() {
     try {
         const response = await fetch(API_BASE);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
         const data = await response.json();
 
         if (Array.isArray(data)) {
             allProducts = data;
+            render();
         } else {
             console.error("❌ Server sent an error instead of data:", data);
             allProducts = [];
+            render();
         }
-        render();
     } catch (err) {
         console.error("❌ Network error connecting to API:", err);
         allProducts = [];
@@ -58,6 +59,12 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
     const btn = document.getElementById('submit-btn');
     const fileInput = document.getElementById('p-image');
     
+    // Validate image before sending
+    if (!fileInput.files[0]) {
+        alert("Please select an image first.");
+        return;
+    }
+
     const formData = new FormData();
     formData.append('image', fileInput.files[0]);
     formData.append('name', document.getElementById('p-name').value);
@@ -70,20 +77,27 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
     btn.innerText = "Processing...";
 
     try {
-        const res = await fetch(API_BASE, { method: 'POST', body: formData });
+        const res = await fetch(API_BASE, { 
+            method: 'POST', 
+            body: formData 
+            // Note: Do NOT set Content-Type header manually when sending FormData
+        });
+
         if (res.ok) {
             alert("Item successfully listed!");
             e.target.reset();
-            fetchProducts();
+            await fetchProducts(); // Refresh the list
         } else {
-            const errorData = await res.json();
-            alert("Upload failed: " + (errorData.error || "Unknown error"));
+            const errorData = await res.json().catch(() => ({}));
+            alert("Upload failed: " + (errorData.error || "Server Error (500)"));
         }
     } catch (err) { 
-        alert("Network error during upload."); 
+        console.error("Upload error:", err);
+        alert("Network error during upload. Check your internet or server status."); 
+    } finally {
+        btn.disabled = false; 
+        btn.innerText = "Post to Showroom";
     }
-    btn.disabled = false; 
-    btn.innerText = "Post to Showroom";
 });
 
 window.deleteItem = async (id) => {
@@ -121,7 +135,10 @@ function render() {
 
     filtered.forEach(p => {
         const msg = encodeURIComponent(`Hi Wesley, I'm interested in ${p.name}`);
-        const fullImageUrl = p.image_url.startsWith('http') ? p.image_url : `${IMAGE_ROOT}${p.image_url}`;
+        
+        // Ensure the image URL is absolute so it works on both Local and Railway
+        const imageBase = isLocal ? 'http://localhost:3000' : 'https://wesleyweb-production.up.railway.app';
+        const fullImageUrl = p.image_url.startsWith('http') ? p.image_url : `${imageBase}${p.image_url}`;
         
         grid.innerHTML += `
             <div class="card">
