@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Railway/System files
+.DS_Store
+dist/
+build/
+npm-debug.log*
+
+# Optional: Ignore uploads if you only want them on the server (recommended)
+uploads/*
+!uploads/.gitkeep
