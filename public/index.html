@@ -3,47 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wesley Stores | Quality Phones, TVs & Furniture in Bungoma</title>
-    
-    <meta name="description" content="Premium electronics and furniture for the Kibabii community. Order via WhatsApp for the best prices in Bungoma.">
-    <meta property="og:title" content="Wesley Stores - Shop Now">
-    <meta property="og:description" content="Phones, TVs, and quality furniture delivered to you.">
-    <meta property="og:image" content="/logo.png">
-
+    <title>Wesley Stores | Campus Electronics & Furniture</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com" rel="stylesheet">
 </head>
 <body>
+
     <header>
         <div class="logo" onclick="attemptAdminLogin()">WESLEY STORES</div>
+        
         <nav id="public-nav">
             <a href="index.html" class="active">Shop</a>
             <a href="aboutUs.html">About</a>
             <a href="contact.html">Contact</a>
         </nav>
+
         <nav id="admin-nav" style="display: none;">
+            <span class="admin-badge">Admin Mode</span>
             <button onclick="showSection('admin')">Manage Store</button>
-            <button onclick="adminLogout()">Logout</button>
+            <button onclick="adminLogout()" class="logout-link">Logout</button>
         </nav>
     </header>
 
     <main id="shop-section">
         <section class="hero">
-            <h1>Everything You Need.</h1>
-            <p>Premium Tech and Furniture for the Kibabii Community.</p>
-            <button class="cta-btn" onclick="document.getElementById('catalog').scrollIntoView()">Start Shopping</button>
+            <div class="hero-content">
+                <h1>Everything You Need.</h1>
+                <p>Premium Phones, TVs, and Furniture tailored for the Kibabii Community.</p>
+                <button class="cta-btn" onclick="document.getElementById('catalog').scrollIntoView()">Start Shopping</button>
+            </div>
         </section>
 
         <section class="container" id="catalog">
             <div class="shop-header">
-                <input type="text" id="search-input" class="search-bar" placeholder="Search phones, TVs, furniture...">
-                <div class="filter-tabs">
+                <input type="text" class="search-bar" placeholder="Search for phones, TVs, furniture..." id="search-input">
+                
+                <div class="filter-tabs" id="category-filters">
                     <button class="tab active" data-cat="all">All</button>
                     <button class="tab" data-cat="Phones">Phones</button>
                     <button class="tab" data-cat="TVs">TVs</button>
+                    <button class="tab" data-cat="Electronics">Electronics</button>
                     <button class="tab" data-cat="Furniture">Furniture</button>
                 </div>
             </div>
+
             <div class="product-grid" id="product-grid"></div>
         </section>
     </main>
@@ -53,31 +56,58 @@
             <div class="form-wrapper">
                 <h3>Add New Inventory</h3>
                 <form id="addForm">
-                    <input type="text" id="p-name" placeholder="Item Name" required>
+                    <input type="text" id="p-name" placeholder="Item Name (e.g. iPhone 13)" required>
+                    
                     <div class="input-row">
                         <select id="p-category">
-                            <option value="Phones">Phones</option>
-                            <option value="TVs">TVs</option>
+                            <option value="Phones">Phones & Tablets</option>
+                            <option value="TVs">TVs & Audio</option>
+                            <option value="Electronics">Computing/Electronics</option>
                             <option value="Furniture">Furniture</option>
+                            <option value="Other">Other</option>
                         </select>
                         <select id="p-condition">
                             <option value="Brand New">Brand New</option>
-                            <option value="Used">Used</option>
+                            <option value="Refurbished">Refurbished</option>
+                            <option value="Used">Second Hand</option>
                         </select>
                     </div>
+
                     <input type="number" id="p-price" placeholder="Price (Ksh)" required>
-                    <label class="file-label"><input type="file" id="p-image" accept="image/*" required> Upload Image</label>
-                    <textarea id="p-desc" placeholder="Details/Specs" required></textarea>
-                    <button type="submit" id="submit-btn">Post Product</button>
+                    
+                    <label class="file-label">
+                        <input type="file" id="p-image" accept="image/*" required>
+                        Click to Upload Item Image
+                    </label>
+
+                    <textarea id="p-desc" placeholder="Details (Specs, size, warranty...)" rows="3" required></textarea>
+                    
+                    <button type="submit" id="submit-btn">Post to Showroom</button>
                 </form>
             </div>
-            <div class="inventory-list" id="admin-list"></div>
+
+            <div class="inventory-list">
+                <h3>Live Inventory</h3>
+                <div id="admin-list">
+                    </div>
+            </div>
         </div>
     </section>
 
     <footer>
+        <div class="container footer-box">
+            <div class="footer-info">
+                <h3>Wesley Stores</h3>
+                <p>The #1 Campus Hub for Electronics and Modern Furniture in Bungoma.</p>
+            </div>
+            <nav class="footer-links">
+                <a href="aboutUs.html">About Our Mission</a>
+                <a href="contact.html">Need Help? Contact Us</a>
+            </nav>
+        </div>
         <div class="bottom-bar">&copy; 2026 Wesley Stores | TechInn Technologies</div>
     </footer>
+
     <script src="script.js"></script>
 </body>
 </html>
